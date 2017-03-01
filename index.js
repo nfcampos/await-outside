@@ -25,7 +25,7 @@ function formatError(e) {
   // remove async function invocation from stack
   // ie. first line from `repl` file starting from bottom
   const i = stackLines.reverse().findIndex(l => l.trim().startsWith('at repl:'))
-  if (i) stackLines.splice(i, 1)
+  if (i !== -1) stackLines.splice(i, 1)
 
   e.stack = stackLines.reverse().join('\n')
   return e
@@ -40,14 +40,18 @@ function addAwaitOutside(replServer) {
     - this is overly restrictive but is easier to maintain
   - capture `await <anything that follows it>`
   */
-  let re = /^\s*(?:([a-zA-Z_$][0-9a-zA-Z_$]*)\s*=\s*)?(await[\s\S]*)/
+  let re = /^\s*(?:([a-zA-Z_$][0-9a-zA-Z_$]*)\s*=\s*)?(\(?\s*await[\s\S]*)/
 
   const wrap = (code, binder) => {
     // strange indentation keeps column offset correct in stack traces
-    return `(async function() { let result = (
+    return `(async function() { try { let result = (
 ${code.trim()}
 );
-      ${binder ? `global.${binder} = result` : 'return result'}
+${binder ? `global.${binder} = result` : 'return result'}
+} catch(error) {
+  global.ERROR = error
+  throw error
+}
     }())`
   }
 
