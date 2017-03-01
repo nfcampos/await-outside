@@ -1,0 +1,20 @@
+{
+  "name": "await-outside",
+  "version": "1.0.0",
+  "description": "Await outside async functions",
+  "main": "index.js",
+  "scripts": {
+    "postversion": "git push && git push --tags && npm publish"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nfcampos/await-outside.git"
+  },
+  "author": "Nuno Campos <nuno.campos@me.com> (https://github.com/nfcampos)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nfcampos/await-outside/issues"
+  },
+  "homepage": "https://github.com/nfcampos/await-outside",
+  "dependencies": {}
+}
