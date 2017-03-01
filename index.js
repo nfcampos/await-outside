@@ -1,5 +1,4 @@
 const repl = require('repl')
-const path = require('path')
 const vm = require('vm')
 
 function addAwaitOutside(replServer) {
@@ -20,6 +19,13 @@ function addAwaitOutside(replServer) {
     }())`
   }
 
+  const isRecoverableError = (error) => {
+    if (error.name === 'SyntaxError') {
+      return /^(Unexpected end of input|Unexpected token)/.test(error.message)
+    }
+    return false
+  }
+
   replServer.eval = function(originalEval) {
     return function (cmd, context, filename, callback) {
       const match = cmd.match(re)
@@ -29,9 +35,12 @@ function addAwaitOutside(replServer) {
       }
 
       const code = wrap(match[2], match[1])
-
-      vm.runInContext(code, vm.createContext(context))
-        .then(r => callback(null, r), callback)
+      try {
+        vm.runInContext(code, vm.createContext(context))
+          .then(r => callback(null, r), callback)
+      } catch (e) {
+        callback(isRecoverableError(e) ? new repl.Recoverable(e) : e)
+      }
     }
   }(replServer.eval)
 }
