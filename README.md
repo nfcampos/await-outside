@@ -1,7 +1,7 @@
 # `await-outside`
 ## A better Node REPL for asynchronous exploration
 
-## From This
+### From This
 
 ```
 $ node
@@ -15,7 +15,7 @@ Promise { <pending> }
 >
 ```
 
-## To This
+### To This
 
 ```
 $ await-outside
