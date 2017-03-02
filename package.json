@@ -4,6 +4,7 @@
   "description": "Await outside async functions",
   "main": "index.js",
   "scripts": {
+    "test": "jest",
     "postversion": "git push && git push --tags"
   },
   "repository": {
@@ -16,5 +17,8 @@
     "url": "https://github.com/nfcampos/await-outside/issues"
   },
   "homepage": "https://github.com/nfcampos/await-outside",
-  "dependencies": {}
+  "dependencies": {},
+  "devDependencies": {
+    "jest": "~19.0.2"
+  }
 }
