@@ -1,7 +1,7 @@
 # `await-outside`
 ## A better Node REPL for asynchronous exploration
 
-Thanks to https://github.com/princejwesley/Mancy for inspiration.
+Inspired by https://github.com/princejwesley/Mancy.
 
 ### From This
 
