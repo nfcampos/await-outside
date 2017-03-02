@@ -3,11 +3,13 @@
   "version": "2.0.0",
   "description": "Await outside async functions",
   "main": "index.js",
+  "bin": "await-outside",
   "scripts": {
     "test": "jest",
     "postversion": "git push && git push --tags"
   },
   "files": [
+    "await-outside",
     "index.js",
     "repl.js"
   ],
