@@ -7,6 +7,13 @@
     "test": "jest",
     "postversion": "git push && git push --tags"
   },
+  "files": [
+    "index.js",
+    "repl.js"
+  ],
+  "engines": {
+    "node": ">=7.6.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nfcampos/await-outside.git"
