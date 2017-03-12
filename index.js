@@ -96,31 +96,38 @@ function asyncToGenIfNecessary(source) {
   return asyncToGen(source, { includeHelper: false }).toString();
 }
 
+function replEval(source, context, filename, cb) {
+  const [newSource, assignment] = wrapAwaitOutside(source);
+
+  try {
+    const options = { filename, displayErrors: true, lineOffset: -1 };
+    var transpiledSource = asyncToGenIfNecessary(newSource);
+    var script = vm.createScript(transpiledSource, options);
+  } catch (e) {
+    cb(isRecoverableError(e) ? new repl.Recoverable(e) : e);
+    return;
+  }
+
+  const runScript = script => {
+    const options = { displayErrors: true, breakOnSigint: true };
+    if (this.useGlobal) return script.runInThisContext(options);
+    else return script.runInContext(context, options);
+  };
+
+  runScript(script)
+    .then(r => assignment ? runScript(vm.createScript(assignment)) : r)
+    .then(r => cb(null, r))
+    .catch(err => cb(formatError(err, transpiledSource)));
+}
+
 function addAwaitOutsideToReplServer(replServer) {
   replServer.eval = (function(originalEval) {
     return function(source, context, filename, cb) {
       if (!isAwaitOutside(source)) {
-        return originalEval.call(this, source, context, filename, cb);
+        return originalEval.apply(this, arguments);
       }
 
-      const [newSource, assignment] = wrapAwaitOutside(source);
-      const options = { filename, displayErrors: true, lineOffset: -1 };
-      const runOptions = { displayErrors: true, breakOnSigint: true };
-
-      try {
-        var transpiledSource = asyncToGenIfNecessary(newSource);
-        var script = vm.createScript(transpiledSource, options);
-      } catch (e) {
-        cb(isRecoverableError(e) ? new repl.Recoverable(e) : e);
-        return;
-      }
-
-      script
-        .runInThisContext(runOptions)
-        .then(
-          r => cb(null, assignment ? vm.runInThisContext(assignment) : r),
-          err => cb(formatError(err, transpiledSource))
-        );
+      return replEval.apply(this, arguments);
     };
   })(replServer.eval);
 }

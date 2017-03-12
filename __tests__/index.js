@@ -1,4 +1,39 @@
-const { isAwaitOutside, wrapAwaitOutside } = require("../");
+const repl = require("repl");
+const { Transform } = require("stream");
+
+const {
+  isAwaitOutside,
+  wrapAwaitOutside,
+  addAwaitOutsideToReplServer
+} = require("../");
+
+const PROMPT = "> ";
+
+function makeReplServer(inputArray) {
+  const outputs = [];
+  const inputs = inputArray.map(str => str + "\n");
+
+  const stream = new Transform({
+    transform(chunk, enc, done) {
+      outputs.push(chunk.toString());
+
+      if (chunk.toString() === prompt) this.push(inputs.shift() || null);
+
+      done();
+    }
+  });
+
+  stream.cork(); // buffer writes until eval method is replaced
+
+  const replServer = repl.start({ input: stream, output: stream });
+
+  addAwaitOutsideToReplServer(replServer);
+
+  stream.uncork();
+
+  return new Promise(resolve =>
+    replServer.on("exit", resolve.bind(null, outputs)));
+}
 
 describe("isAwaitOutside", () => {
   it("returns true for await expressions", () => {
@@ -154,6 +189,37 @@ await 3
 ); } catch(e) { global.ERROR = e; throw e; } }())`,
 
       `abc = global.__await_outside_result; void delete global.__await_outside_result;`
+    ]);
+  });
+});
+
+describe("addAwaitOutsideToReplServer", () => {
+  it("evaluates await expression", async () => {
+    const output = await makeReplServer(["await 2 + 3", "6"]);
+    expect(output).toEqual([PROMPT, "5\n", PROMPT, "6\n", PROMPT]);
+  });
+
+  it("evaluates await expression with assignment", async () => {
+    const output = await makeReplServer(["let abc = await 2 + 3", "abc * 2"]);
+    expect(output).toEqual([PROMPT, "undefined\n", PROMPT, "10\n", PROMPT]);
+  });
+
+  it("evaluates await expression that reject", async () => {
+    const output = await makeReplServer([
+      'await Promise.reject(new Error("Hmm"))'
+    ]);
+    expect(output).toEqual([
+      PROMPT,
+      `Error: Hmm
+    at repl:1:22
+    at ContextifyScript.Script.runInContext (vm.js:32:29)
+    at REPLServer.onLine (repl.js:533:10)
+    at emitOne (events.js:96:13)
+    at REPLServer.emit (events.js:191:7)
+    at REPLServer.Interface._onLine (readline.js:238:10)
+`,
+      PROMPT,
+      PROMPT // why 2 prompts?
     ]);
   });
 });
