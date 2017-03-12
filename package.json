@@ -6,6 +6,7 @@
   "bin": "await-outside",
   "scripts": {
     "test": "jest",
+    "precommit": "lint-staged",
     "postversion": "git push && git push --tags"
   },
   "files": [
