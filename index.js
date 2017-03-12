@@ -22,47 +22,78 @@ function isRecoverableError(error) {
   return false;
 }
 
-function formatError(error) {
-  const stackLines = error.stack.split("\n");
+function formatError(error, source) {
+  if (
+    !error.stack // promises can be rejected with non-error values
+  )
+    return error;
 
-  // remove async function invocation from stack
-  // ie. first line from `repl` file starting from bottom
-  const i = stackLines
-    .reverse()
-    .findIndex(l => l.trim().startsWith("at repl:"));
-  if (i !== -1) stackLines.splice(i, 1);
+  const firstLineOfSource = "at repl:" + 0;
+  const lastLineOfSource = "at repl:" + (source.split("\n").length - 1);
 
-  error.stack = stackLines.reverse().join("\n");
+  let frames = error.stack.split("\n");
+
+  frames = frames
+    // remove __async invocation from stack
+    .filter(l => !l.trim().startsWith(firstLineOfSource))
+    // remove IIFE invocation from stack
+    .filter(l => !l.trim().startsWith(lastLineOfSource))
+    // remove any frames inside this file (ie. inside __async helper)
+    .filter(l => !l.includes(__filename));
+
+  error.stack = frames.join("\n");
+
   return error;
 }
 
 /*
 - allow whitespace before everything else
-- optionally capture `<varname> = `
+- optionally capture `var|let|const <varname> = `
   - varname only matches if it starts with a-Z or _ or $
     and if contains only those chars or numbers
   - this is overly restrictive but is easier to maintain
 - capture `await <anything that follows it>`
 */
-let re = /^\s*(?:([a-zA-Z_$][0-9a-zA-Z_$]*)\s*=\s*)?(\(?\s*await[\s\S]*)/;
+let re = /^\s*((?:(?:var|const|let)\s+)?[a-zA-Z_$][0-9a-zA-Z_$]*\s*=\s*)?(\(?\s*await[\s\S]*)/;
 
 function isAwaitOutside(source) {
   return re.test(source);
 }
 
+const RESULT = "__await_outside_result";
+
 function wrapAwaitOutside(source) {
-  const [_, identifier, expression] = source.match(re);
+  const [_, assign, expression] = source.match(re);
 
   // strange indentation keeps column offset correct in stack traces
-  return `(async function() { try { let result = (
+  const wrappedExpression = `(async function() { try { ${assign ? `global.${RESULT} =` : "return"} (
 ${expression.trim()}
-);
-${identifier ? `global.${identifier} = result` : "return result"}
-} catch(error) {
-global.ERROR = error
-throw error
+); } catch(e) { global.ERROR = e; throw e; } }())`;
+
+  const assignment = assign
+    ? `${assign.trim()} global.${RESULT}; void delete global.${RESULT};`
+    : null;
+
+  return [wrappedExpression, assignment];
 }
-  }())`;
+
+const engineSupportsAsyncFunctions = (function() {
+  try {
+    eval("(async function() { })");
+    return true;
+  } catch (e) {
+    // add async-to-gen helper to global context
+    const { asyncHelper: asyncHelperString } = require("async-to-gen");
+    global.__async = Function(`return ${asyncHelperString}`)();
+    return false;
+  }
+})();
+
+function asyncToGenIfNecessary(source) {
+  if (engineSupportsAsyncFunctions) return source;
+
+  const asyncToGen = require("async-to-gen");
+  return asyncToGen(source, { includeHelper: false }).toString();
 }
 
 function addAwaitOutsideToReplServer(replServer) {
@@ -72,19 +103,24 @@ function addAwaitOutsideToReplServer(replServer) {
         return originalEval.call(this, source, context, filename, cb);
       }
 
-      const newSource = wrapAwaitOutside(source);
+      const [newSource, assignment] = wrapAwaitOutside(source);
       const options = { filename, displayErrors: true, lineOffset: -1 };
+      const runOptions = { displayErrors: true, breakOnSigint: true };
 
       try {
-        var script = vm.createScript(newSource, options);
+        var transpiledSource = asyncToGenIfNecessary(newSource);
+        var script = vm.createScript(transpiledSource, options);
       } catch (e) {
         cb(isRecoverableError(e) ? new repl.Recoverable(e) : e);
         return;
       }
 
       script
-        .runInThisContext({ displayErrors: true, breakOnSigint: true })
-        .then(r => cb(null, r), err => cb(formatError(err)));
+        .runInThisContext(runOptions)
+        .then(
+          r => cb(null, assignment ? vm.runInThisContext(assignment) : r),
+          err => cb(formatError(err, transpiledSource))
+        );
     };
   })(replServer.eval);
 }
