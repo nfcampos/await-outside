@@ -14,6 +14,9 @@
     "index.js",
     "repl.js"
   ],
+  "engines": {
+    "node": ">=6"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nfcampos/await-outside.git"
