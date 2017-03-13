@@ -17,7 +17,7 @@ function makeReplServer(inputArray) {
     transform(chunk, enc, done) {
       outputs.push(chunk.toString());
 
-      if (chunk.toString() === prompt) this.push(inputs.shift() || null);
+      if (chunk.toString() === PROMPT) this.push(inputs.shift() || null);
 
       done();
     }
@@ -26,7 +26,6 @@ function makeReplServer(inputArray) {
   stream.cork(); // buffer writes until eval method is replaced
 
   const replServer = repl.start({ input: stream, output: stream });
-
   addAwaitOutsideToReplServer(replServer);
 
   stream.uncork();
@@ -210,14 +209,7 @@ describe("addAwaitOutsideToReplServer", () => {
     ]);
     expect(output).toEqual([
       PROMPT,
-      `Error: Hmm
-    at repl:1:22
-    at ContextifyScript.Script.runInContext (vm.js:32:29)
-    at REPLServer.onLine (repl.js:533:10)
-    at emitOne (events.js:96:13)
-    at REPLServer.emit (events.js:191:7)
-    at REPLServer.Interface._onLine (readline.js:238:10)
-`,
+      expect.stringMatching(/Error: Hmm/),
       PROMPT,
       PROMPT // why 2 prompts?
     ]);

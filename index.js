@@ -82,9 +82,6 @@ const engineSupportsAsyncFunctions = (function() {
     eval("(async function() { })");
     return true;
   } catch (e) {
-    // add async-to-gen helper to global context
-    const { asyncHelper: asyncHelperString } = require("async-to-gen");
-    global.__async = Function(`return ${asyncHelperString}`)();
     return false;
   }
 })();
@@ -121,6 +118,18 @@ function replEval(source, context, filename, cb) {
 }
 
 function addAwaitOutsideToReplServer(replServer) {
+  if (!engineSupportsAsyncFunctions) {
+    function addAsyncHelperToContext(context) {
+      // add async-to-gen helper to global context
+      const { asyncHelper: __asyncString } = require("async-to-gen");
+      context.__async = Function(`return ${__asyncString}`)();
+    }
+
+    addAsyncHelperToContext(replServer.context);
+
+    replServer.on("reset", addAsyncHelperToContext);
+  }
+
   replServer.eval = (function(originalEval) {
     return function(source, context, filename, cb) {
       if (!isAwaitOutside(source)) {
