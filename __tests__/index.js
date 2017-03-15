@@ -7,33 +7,6 @@ const {
   addAwaitOutsideToReplServer
 } = require("../");
 
-const PROMPT = "> ";
-
-function makeReplServer(inputArray) {
-  const outputs = [];
-  const inputs = inputArray.map(str => str + "\n");
-
-  const stream = new Transform({
-    transform(chunk, enc, done) {
-      outputs.push(chunk.toString());
-
-      if (chunk.toString() === PROMPT) this.push(inputs.shift() || null);
-
-      done();
-    }
-  });
-
-  stream.cork(); // buffer writes until eval method is replaced
-
-  const replServer = repl.start({ input: stream, output: stream });
-  addAwaitOutsideToReplServer(replServer);
-
-  stream.uncork();
-
-  return new Promise(resolve =>
-    replServer.on("exit", resolve.bind(null, outputs)));
-}
-
 describe("isAwaitOutside", () => {
   it("returns true for await expressions", () => {
     // literal
@@ -191,6 +164,35 @@ await 3
     ]);
   });
 });
+
+const PROMPT = "> ";
+
+function makeReplServer(inputArray) {
+  const outputs = [];
+  const inputs = inputArray.map(str => str + "\n");
+
+  // userOfRepl is a transform stream that saves output
+  // and sends new input every time a prompt appears
+  const userOfRepl = new Transform({
+    transform(chunk, enc, done) {
+      outputs.push(chunk.toString());
+
+      if (chunk.toString() === PROMPT) this.push(inputs.shift() || null);
+
+      done();
+    }
+  });
+
+  userOfRepl.cork(); // buffer writes until eval method is replaced
+
+  const replServer = repl.start({ input: userOfRepl, output: userOfRepl });
+  addAwaitOutsideToReplServer(replServer);
+
+  userOfRepl.uncork();
+
+  return new Promise(resolve =>
+    replServer.on("exit", resolve.bind(null, outputs)));
+}
 
 describe("addAwaitOutsideToReplServer", () => {
   it("evaluates await expression", async () => {
