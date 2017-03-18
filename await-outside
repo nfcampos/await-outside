@@ -1,3 +1,4 @@
-#! /usr/bin/env bash
+#! /usr/bin/env node
 
-node -r await-outside/repl "$@"
+require('child_process')
+  .spawn('node', ['-r', require.resolve('./repl')], {stdio: [0, 1, 2]})
