@@ -3,8 +3,6 @@
 # `await-outside`
 ## A better Node REPL for asynchronous exploration
 
-Semra here
-
 Inspired by https://github.com/princejwesley/Mancy.
 
 ### From This
