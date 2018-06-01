@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/SemraSh/await-outside.svg?branch=master)](https://travis-ci.org/SemraSh/await-outside)
+
 # `await-outside`
 ## A better Node REPL for asynchronous exploration
 
