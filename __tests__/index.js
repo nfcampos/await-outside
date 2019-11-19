@@ -171,6 +171,24 @@ await fetch()
 
       null
     ]);
+    // multiple trailing semicolons
+    expect(wrapAwaitOutside("await fetch();;;")).toEqual([
+      `(async function() { try { return (
+await fetch()
+); } catch(e) { global.ERROR = e; throw e; } }())`,
+
+      null
+    ]);
+    // ignores semicolons inside the expression
+    expect(
+      wrapAwaitOutside("await (async () => { fetch(); fetch() })()")
+    ).toEqual([
+      `(async function() { try { return (
+await (async () => { fetch(); fetch() })()
+); } catch(e) { global.ERROR = e; throw e; } }())`,
+
+      null
+    ]);
   });
 });
 
