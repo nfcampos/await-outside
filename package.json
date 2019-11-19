@@ -34,7 +34,7 @@
     "husky": "~0.13.2",
     "jest": "^25.0.0",
     "lint-staged": "~3.3.1",
-    "prettier": "~0.22.0"
+    "prettier": "~1.19.1"
   },
   "jest": {
     "transform": {
