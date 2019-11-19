@@ -162,6 +162,15 @@ await 3
 
       `abc = global.__await_outside_result; void delete global.__await_outside_result;`
     ]);
+    // ignore trailing semicolons
+    // https://github.com/nfcampos/await-outside/issues/2
+    expect(wrapAwaitOutside("await fetch();")).toEqual([
+      `(async function() { try { return (
+await fetch()
+); } catch(e) { global.ERROR = e; throw e; } }())`,
+
+      null
+    ]);
   });
 });
 

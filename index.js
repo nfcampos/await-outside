@@ -60,6 +60,14 @@ function isAwaitOutside(source) {
   return re.test(source);
 }
 
+/*
+  remove padding and semicolons so that the expression can
+  be safely evaluated inside of parens
+ */
+function sanitizeExpression(expression) {
+  return expression.trim().replace(/;+$/, "");
+}
+
 const RESULT = "__await_outside_result";
 
 function wrapAwaitOutside(source) {
@@ -67,7 +75,7 @@ function wrapAwaitOutside(source) {
 
   // strange indentation keeps column offset correct in stack traces
   const wrappedExpression = `(async function() { try { ${assign ? `global.${RESULT} =` : "return"} (
-${expression.trim()}
+${sanitizeExpression(expression)}
 ); } catch(e) { global.ERROR = e; throw e; } }())`;
 
   const assignment = assign
